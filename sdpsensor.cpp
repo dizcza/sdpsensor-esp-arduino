@@ -5,6 +5,7 @@
  *      Author: Danylo Ulianych
  */
 
+#include <HardwareSerial.h>
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "sdpsensor.h"
