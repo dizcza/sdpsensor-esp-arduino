@@ -28,7 +28,7 @@ void setup() {
 void loop() {
   delay(1000);
   int16_t pressure;
-  esp_err_t err = sdp.readContinuousRaw(&pressure);
+  esp_err_t err = sdp.readDiffPressure(&pressure);
   ESP_LOGI("sdp", "raw pressure: %d, err code: %s", pressure, esp_err_to_name(err));
 
   /*

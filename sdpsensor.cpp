@@ -25,10 +25,14 @@
 
 const char *TAG_SDPSENSOR = "sdpsensor";
 
-/*
+/**
+ * Compute CRC from data.
  * See http://www.sunshine2k.de/articles/coding/crc/understanding_crc.html
+ * 
+ * @param data - I2C read bytes of size 2
+ * @returns crc - the CRC value from the data
  */
-uint8_t SDPSensor::computeCRC(uint8_t* data)
+uint8_t computeCRC(uint8_t* data)
 {
     const uint8_t generator = 0x31;  /* Polynomial */
     uint8_t crc = 0xFF; /* Initial value from the datasheet */
@@ -114,7 +118,7 @@ void SDPSensor::initSensor() {
 	const uint32_t pid = (read_buffer[0] << 24) | (read_buffer[1] << 16)
 			| (read_buffer[3] << 8) | (read_buffer[4] << 0);
 
-    uint32_t model_number, range_pa;
+  uint32_t model_number, range_pa;
 	switch (pid & 0xFFFFFF00) {
 	case SPD31_500_PID:
 		model_number = 31;
@@ -232,7 +236,7 @@ void SDPSensor::watchdogCheck(esp_err_t status) {
 }
 
 
-esp_err_t SDPSensor::readContinuousRaw(int16_t *diffPressureRaw) {
+esp_err_t SDPSensor::readDiffPressure(int16_t *diffPressureRaw) {
 	uint8_t data[3] = { 0 };
 	esp_err_t err = i2c_master_read_from_device(i2c_port, i2c_addr, data, 3,
 			I2C_NO_TIMEOUT);
@@ -246,7 +250,7 @@ esp_err_t SDPSensor::readContinuousRaw(int16_t *diffPressureRaw) {
 }
 
 
-esp_err_t SDPSensor::readContinuousRawTemperature(int16_t *diffPressureRaw, float *temperature) {
+esp_err_t SDPSensor::readDiffPressureTemperature(int16_t *diffPressureRaw, float *temperature) {
 	uint8_t data[6] = { 0 };
 
 	/*

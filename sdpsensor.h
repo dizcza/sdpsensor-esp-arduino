@@ -16,9 +16,8 @@ class SDPSensor {
         uint8_t i2c_addr;                    /* I2C address */
         i2c_port_t i2c_port;                 /* I2C master port */
         uint16_t pressureScale;              /* Diff pressure scale */
-        uint32_t failsCount;                 /* SDP successive failed reads count */
-        uint32_t maxSuccessiveFailsCount;    /* SDP max successive failed reads before SW reset */
-        uint8_t computeCRC(uint8_t *data);   /* Compute CRC from data */
+        uint32_t failsCount;                 /* [watchdog] SDP successive failed reads count */
+        uint32_t maxSuccessiveFailsCount;    /* [watchdog] SDP max successive failed reads before SW reset */
     public:
 
         /**
@@ -76,6 +75,8 @@ class SDPSensor {
 
         /**
          * Reset the SDP sensor.
+         * All other sensors connected to the same I2C line
+         * (same port) will also receive the reset command.
          *
          * @returns the error code (defined in esp_err.h)
          */
@@ -106,10 +107,10 @@ class SDPSensor {
 
 
         /**
-         * Read the raw differential pressure value and save the result
-         * in `diffPressureRaw`. To convert it to the real value in Pa,
-         * one should divide it by the pressure scale (see
-         * `getPressureScale()` function).
+         * Read the raw (unnormalized) differential pressure value and
+         * save the result in `diffPressureRaw`. To convert it to a
+         * physical value in Pa, one should divide it by the pressure
+         * scale (see the `getPressureScale()` function).
          *
          * This call is non-blocking (zero I2C timeout).
          *
@@ -120,17 +121,19 @@ class SDPSensor {
          *    ESP_ERR_TIMEOUT      - timed out
          *    ESP_ERR_INVALID_CRC  - CRC mismatch
          */
-        esp_err_t readContinuousRaw(int16_t *diffPressureRaw);
+        esp_err_t readDiffPressure(int16_t *diffPressureRaw);
 
 
         /**
          * Read the raw differential pressure value AND the temperature.
          * 
+         * This call is non-blocking (zero I2C timeout).
+         * 
          * @param diffPressureRaw - a pointer to save the diff pressure
          * @param temperature - a pointer to save the temperature in Celsius
          * @returns the error code (defined in esp_err.h)
          */
-        esp_err_t readContinuousRawTemperature(int16_t *diffPressureRaw, float *temperature);
+        esp_err_t readDiffPressureTemperature(int16_t *diffPressureRaw, float *temperature);
 };
 
 #endif /* SDPSENSOR_H_ */
