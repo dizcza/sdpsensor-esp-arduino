@@ -106,8 +106,6 @@ void logInitFailed(esp_err_t err) {
 
 
 esp_err_t SDPSensor::begin() {
-	SDPSensor::reset();  // stop continuous mode
-
 	// commands to read product id
 	uint8_t cmd0[SDPSENSOR_I2C_CMD_LEN] = { 0x36, 0x7C };
 	uint8_t cmd1[SDPSENSOR_I2C_CMD_LEN] = { 0xE1, 0x02 };
@@ -213,8 +211,6 @@ uint16_t SDPSensor::getPressureScale() {
 
 
 esp_err_t SDPSensor::startContinuous() {
-    if (!initialized) return ESP_ERR_INVALID_STATE;
-
 	uint8_t cmd[SDPSENSOR_I2C_CMD_LEN] = { 0x36, 0x1E };
 	const TickType_t ticks_to_wait_long = pdMS_TO_TICKS(100);
 	esp_err_t err = i2c_master_write_to_device(i2c_port, i2c_addr, cmd,
@@ -228,8 +224,6 @@ esp_err_t SDPSensor::startContinuous() {
 
 
 esp_err_t SDPSensor::stopContinuous() {
-    if (!initialized) return ESP_ERR_INVALID_STATE;
-	
     uint8_t cmd[SDPSENSOR_I2C_CMD_LEN] = { 0x3F, 0xF9 };
 	const TickType_t ticks_to_wait_long = pdMS_TO_TICKS(100);
 	esp_err_t err = i2c_master_write_to_device(i2c_port, i2c_addr, cmd,

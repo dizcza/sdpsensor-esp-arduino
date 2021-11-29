@@ -20,6 +20,7 @@ void setup() {
   Serial.begin(115200);
   delay(1000); // let serial console settle
   sdp.initI2C(19, 23);  // same as Wire.begin(19, 23)
+  sdp.stopContinuous();  // sdp.reset() is also possible
   sdp.begin();
   sdp.startContinuous();
 }
