@@ -55,9 +55,10 @@ uint8_t computeCRC(uint8_t* data)
 SDPSensor::SDPSensor(uint8_t i2c_addr, i2c_port_t i2c_port) {
     this->i2c_addr = i2c_addr;
     this->i2c_port = i2c_port;
-    this->pressureScale = 0;  // will be set in the init()
+    this->pressureScale = 0;  // will be read & set in the begin()
     this->maxSuccessiveFailsCount = 2;
     this->failsCount = 0;
+    this->initialized = false;
 }
 
 
@@ -87,6 +88,13 @@ void SDPSensor::initI2C(int pinSDA, int pinSCL) {
 }
 
 
+void logInitFailed(esp_err_t err) {
+  ESP_LOGE(TAG_SDPSENSOR,
+           "Could not initialize and setup the SDP sensor: %s",
+           esp_err_to_name(err));
+}
+
+
 esp_err_t SDPSensor::begin() {
 	SDPSensor::reset();  // stop continuous mode
 
@@ -102,9 +110,15 @@ esp_err_t SDPSensor::begin() {
 	const TickType_t ticks_to_wait_long = pdMS_TO_TICKS(100);
     esp_err_t err;
 	err = i2c_master_write_to_device(i2c_port, i2c_addr, cmd0, SDPSENSOR_I2C_CMD_LEN, ticks_to_wait_long);
-    if (err != ESP_OK) return err;
+    if (err != ESP_OK) {
+      logInitFailed(err);
+      return err;
+    }
     err = i2c_master_write_to_device(i2c_port, i2c_addr, cmd1, SDPSENSOR_I2C_CMD_LEN, ticks_to_wait_long);
-    if (err != ESP_OK) return err;
+    if (err != ESP_OK) {
+      logInitFailed(err);
+      return err;
+    }
 
 	/*
 	 Read product id and serial number.
@@ -113,7 +127,10 @@ esp_err_t SDPSensor::begin() {
 	 | Value |  pid1 |CRC|  pid2 |CRC| serial |
 	 */
     err = i2c_master_read_from_device(i2c_port, i2c_addr, read_buffer, 18, ticks_to_wait_long);
-    if (err != ESP_OK) return err;
+    if (err != ESP_OK) {
+      logInitFailed(err);
+      return err;
+    }
 
 	const uint32_t pid = (read_buffer[0] << 24) | (read_buffer[1] << 16)
 			| (read_buffer[3] << 8) | (read_buffer[4] << 0);
@@ -157,25 +174,37 @@ esp_err_t SDPSensor::begin() {
 	ESP_LOGI(TAG_SDPSENSOR, "Initialized SDP%d %dPa sensor (PID=0x%08X)", model_number, range_pa, pid);
 
 	err = i2c_master_write_to_device(i2c_port, i2c_addr, cmd_measure, SDPSENSOR_I2C_CMD_LEN, ticks_to_wait_long);
-    if (err != ESP_OK) return err;
+    if (err != ESP_OK) {
+      logInitFailed(err);
+      return err;
+    }
 
 	vTaskDelay(pdMS_TO_TICKS(90));  // theoretically 45 ms
 
 	err = i2c_master_read_from_device(i2c_port, i2c_addr, read_buffer, 9, ticks_to_wait_long);
-    if (err != ESP_OK) return err;
+    if (err != ESP_OK) {
+      logInitFailed(err);
+      return err;
+    }
 
 	this->pressureScale = ((int16_t) read_buffer[6]) << 8 | read_buffer[7];
 
 	ESP_LOGI(TAG_SDPSENSOR, "SDP%d pressure scale: %d", model_number, this->pressureScale);
 
+    this->initialized = true;
+
     return err;
 }
+
 
 uint16_t SDPSensor::getPressureScale() {
 	return pressureScale;
 }
 
+
 esp_err_t SDPSensor::startContinuous() {
+    if (!initialized) return ESP_ERR_INVALID_STATE;
+
 	uint8_t cmd[SDPSENSOR_I2C_CMD_LEN] = { 0x36, 0x1E };
 	const TickType_t ticks_to_wait_long = pdMS_TO_TICKS(100);
 	esp_err_t err = i2c_master_write_to_device(i2c_port, i2c_addr, cmd,
@@ -187,8 +216,11 @@ esp_err_t SDPSensor::startContinuous() {
 	return err;
 }
 
+
 esp_err_t SDPSensor::stopContinuous() {
-	uint8_t cmd[SDPSENSOR_I2C_CMD_LEN] = { 0x3F, 0xF9 };
+    if (!initialized) return ESP_ERR_INVALID_STATE;
+	
+    uint8_t cmd[SDPSENSOR_I2C_CMD_LEN] = { 0x3F, 0xF9 };
 	const TickType_t ticks_to_wait_long = pdMS_TO_TICKS(100);
 	esp_err_t err = i2c_master_write_to_device(i2c_port, i2c_addr, cmd,
 			SDPSENSOR_I2C_CMD_LEN, ticks_to_wait_long);
@@ -197,6 +229,7 @@ esp_err_t SDPSensor::stopContinuous() {
     vTaskDelay(pdMS_TO_TICKS(20));
 	return err;
 }
+
 
 esp_err_t SDPSensor::reset() {
 	uint8_t cmd[1] = { 0x06 };
@@ -208,13 +241,16 @@ esp_err_t SDPSensor::reset() {
 	return err;
 }
 
+
 void SDPSensor::watchdogSetParams(uint32_t maxSuccessiveFailsCount) {
     this->maxSuccessiveFailsCount = maxSuccessiveFailsCount;
 }
 
 
 void SDPSensor::watchdogCheck(esp_err_t status) {
-	if (status == ESP_OK || status == ESP_ERR_INVALID_CRC) {
+    if (!initialized) return;
+
+    if (status == ESP_OK || status == ESP_ERR_INVALID_CRC) {
 		// invalid CRC does not mean that the sensor is not functioning
 		failsCount = 0;
 	} else {
@@ -239,7 +275,9 @@ void SDPSensor::watchdogCheck(esp_err_t status) {
 
 
 esp_err_t SDPSensor::readDiffPressure(int16_t *diffPressureRaw) {
-	uint8_t data[3] = { 0 };
+    if (!initialized) return ESP_ERR_INVALID_STATE;
+	
+    uint8_t data[3] = { 0 };
 	esp_err_t err = i2c_master_read_from_device(i2c_port, i2c_addr, data, 3,
 			I2C_NO_TIMEOUT);
 	if (err == ESP_OK) {
@@ -253,7 +291,9 @@ esp_err_t SDPSensor::readDiffPressure(int16_t *diffPressureRaw) {
 
 
 esp_err_t SDPSensor::readDiffPressureTemperature(int16_t *diffPressureRaw, float *temperature) {
-	uint8_t data[6] = { 0 };
+    if (!initialized) return ESP_ERR_INVALID_STATE;
+	
+    uint8_t data[6] = { 0 };
 
 	/*
 	 Data Format:

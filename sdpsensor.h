@@ -18,6 +18,7 @@ class SDPSensor {
         uint16_t pressureScale;              /* Diff pressure scale */
         uint32_t failsCount;                 /* [watchdog] SDP successive failed reads count */
         uint32_t maxSuccessiveFailsCount;    /* [watchdog] SDP max successive failed reads before SW reset */
+        bool initialized;
     public:
 
         /**
@@ -120,10 +121,11 @@ class SDPSensor {
          *
          * @param diffPressureRaw - a pointer to save the result
          * @returns the error code (defined in esp_err.h):
-         *    ESP_OK               - success
-         *    ESP_FAIL             - failure
-         *    ESP_ERR_TIMEOUT      - timed out
-         *    ESP_ERR_INVALID_CRC  - CRC mismatch
+         *    ESP_OK                 - success
+         *    ESP_FAIL               - failure
+         *    ESP_ERR_TIMEOUT        - timed out
+         *    ESP_ERR_INVALID_CRC    - CRC mismatch
+         *    ESP_ERR_INVALID_STATE  - not initialized
          */
         esp_err_t readDiffPressure(int16_t *diffPressureRaw);
 
