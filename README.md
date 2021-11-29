@@ -14,8 +14,8 @@ Serial output:
 ```
 [  1021][I][sdpsensor.cpp:86] initI2C(): I2C0 line initialized
 [  1021][I][sdpsensor.cpp:204] reset(): SDPSensor::reset ESP_OK
-[  1042][I][sdpsensor.cpp:157] initSensor(): Initialized SDP31 500Pa sensor (PID=0x03010188)
-[  1133][I][sdpsensor.cpp:169] initSensor(): SDP31 pressure scale: 60
+[  1042][I][sdpsensor.cpp:157] begin(): Initialized SDP31 500Pa sensor (PID=0x03010188)
+[  1133][I][sdpsensor.cpp:169] begin(): SDP31 pressure scale: 60
 [  1133][I][sdpsensor.cpp:182] startContinuous(): SDPSensor::startContinuous ESP_OK
 
 [  2154][I][sdpsensor-esp-arduino.ino:32] loop(): raw pressure: 0, err code: ESP_OK
