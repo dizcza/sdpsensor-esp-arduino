@@ -41,12 +41,16 @@ class SDPSensor {
 
 
         /**
-         * Initialize SDP sensor.
+         * Initialize an SDP sensor.
          *
          * Firstly, it resets the sensor prior to executing any I2C commands.
          * Then it reads and saves the sensor serial number and diff pressure scale.
+         * The returned error code other than ESP_OK (0) means that the sensor has
+         * not been properly initialized.
+         *
+         * @returns the error code (defined in esp_err.h)
          */
-        void initSensor();
+        esp_err_t begin();
 
 
         /**

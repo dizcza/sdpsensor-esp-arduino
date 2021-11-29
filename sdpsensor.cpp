@@ -87,7 +87,7 @@ void SDPSensor::initI2C(int pinSDA, int pinSCL) {
 }
 
 
-void SDPSensor::initSensor() {
+esp_err_t SDPSensor::begin() {
 	SDPSensor::reset();  // stop continuous mode
 
 	// commands to read product id
@@ -100,10 +100,11 @@ void SDPSensor::initSensor() {
 	uint8_t read_buffer[18] = { 0 };
 
 	const TickType_t ticks_to_wait_long = pdMS_TO_TICKS(100);
-	ESP_ERROR_CHECK(
-			i2c_master_write_to_device(i2c_port, i2c_addr, cmd0, SDPSENSOR_I2C_CMD_LEN, ticks_to_wait_long));
-	ESP_ERROR_CHECK(
-			i2c_master_write_to_device(i2c_port, i2c_addr, cmd1, SDPSENSOR_I2C_CMD_LEN, ticks_to_wait_long));
+    esp_err_t err;
+	err = i2c_master_write_to_device(i2c_port, i2c_addr, cmd0, SDPSENSOR_I2C_CMD_LEN, ticks_to_wait_long);
+    if (err != ESP_OK) return err;
+    err = i2c_master_write_to_device(i2c_port, i2c_addr, cmd1, SDPSENSOR_I2C_CMD_LEN, ticks_to_wait_long);
+    if (err != ESP_OK) return err;
 
 	/*
 	 Read product id and serial number.
@@ -111,9 +112,8 @@ void SDPSensor::initSensor() {
 	 | Byte  | 0 | 1 | 2 | 3 | 4 | 5 | 6...18 |
 	 | Value |  pid1 |CRC|  pid2 |CRC| serial |
 	 */
-	ESP_ERROR_CHECK(
-			i2c_master_read_from_device(i2c_port, i2c_addr, read_buffer, 18,
-					ticks_to_wait_long));
+    err = i2c_master_read_from_device(i2c_port, i2c_addr, read_buffer, 18, ticks_to_wait_long);
+    if (err != ESP_OK) return err;
 
 	const uint32_t pid = (read_buffer[0] << 24) | (read_buffer[1] << 16)
 			| (read_buffer[3] << 8) | (read_buffer[4] << 0);
@@ -156,17 +156,19 @@ void SDPSensor::initSensor() {
 
 	ESP_LOGI(TAG_SDPSENSOR, "Initialized SDP%d %dPa sensor (PID=0x%08X)", model_number, range_pa, pid);
 
-	ESP_ERROR_CHECK(
-			i2c_master_write_to_device(i2c_port, i2c_addr, cmd_measure, SDPSENSOR_I2C_CMD_LEN, ticks_to_wait_long));
+	err = i2c_master_write_to_device(i2c_port, i2c_addr, cmd_measure, SDPSENSOR_I2C_CMD_LEN, ticks_to_wait_long);
+    if (err != ESP_OK) return err;
 
 	vTaskDelay(pdMS_TO_TICKS(90));  // theoretically 45 ms
 
-	ESP_ERROR_CHECK(
-			i2c_master_read_from_device(i2c_port, i2c_addr, read_buffer, 9, ticks_to_wait_long));
+	err = i2c_master_read_from_device(i2c_port, i2c_addr, read_buffer, 9, ticks_to_wait_long);
+    if (err != ESP_OK) return err;
 
 	this->pressureScale = ((int16_t) read_buffer[6]) << 8 | read_buffer[7];
 
 	ESP_LOGI(TAG_SDPSENSOR, "SDP%d pressure scale: %d", model_number, this->pressureScale);
+
+    return err;
 }
 
 uint16_t SDPSensor::getPressureScale() {
