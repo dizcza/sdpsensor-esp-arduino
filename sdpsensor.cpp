@@ -62,7 +62,7 @@ SDPSensor::SDPSensor(uint8_t i2c_addr, i2c_port_t i2c_port) {
 }
 
 
-void SDPSensor::initI2C(int pinSDA, int pinSCL) {
+esp_err_t SDPSensor::initI2C(int pinSDA, int pinSCL) {
   int intr_flag_disable = 0;
 
   /* I2C master doesn't need buffer */
@@ -78,13 +78,23 @@ void SDPSensor::initI2C(int pinSDA, int pinSCL) {
     };
   conf.master.clk_speed = 400000;  /*!< I2C master clock frequency */
 
-  ESP_ERROR_CHECK(i2c_param_config(i2c_port, &conf));
-
-	ESP_ERROR_CHECK(
-			i2c_driver_install(i2c_port, conf.mode,
+  esp_err_t err;
+  err = i2c_param_config(i2c_port, &conf);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG_SDPSENSOR, "Could not configure the I2C: %s", esp_err_to_name(err));
+    return err;
+  }
+ 
+  err = i2c_driver_install(i2c_port, conf.mode,
 					i2c_master_rx_buf_disable, i2c_master_tx_buf_disable,
-					intr_flag_disable));
+					intr_flag_disable);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG_SDPSENSOR, "Could not initialize the I2C: %s", esp_err_to_name(err));
+    return err;
+  }
 	ESP_LOGI(TAG_SDPSENSOR, "I2C%d line initialized", i2c_port);
+
+    return err;
 }
 
 

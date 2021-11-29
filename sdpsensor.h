@@ -37,8 +37,10 @@ class SDPSensor {
          *
          * @param pinSDA - SDA GPIO
          * @param pinSCL - SCL GPIO
+         *
+         * @returns the error code (defined in esp_err.h)
          */
-        void initI2C(int pinSDA, int pinSCL);
+        esp_err_t initI2C(int pinSDA, int pinSCL);
 
 
         /**
