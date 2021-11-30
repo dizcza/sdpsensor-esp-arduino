@@ -218,7 +218,7 @@ esp_err_t SDPSensor::startContinuous() {
     ESP_LOGI(TAG_SDPSENSOR, "SDPSensor::startContinuous %s",
             esp_err_to_name(err));
     // wait for sensor to start continuously making measurements
-    vTaskDelay(pdMS_TO_TICKS(20));
+    vTaskDelay(pdMS_TO_TICKS(25));
     return err;
 }
 
@@ -230,7 +230,7 @@ esp_err_t SDPSensor::stopContinuous() {
             SDPSENSOR_I2C_CMD_LEN, ticks_to_wait_long);
     ESP_LOGI(TAG_SDPSENSOR, "SDPSensor::stopContinuous %s",
             esp_err_to_name(err));
-    vTaskDelay(pdMS_TO_TICKS(20));
+    vTaskDelay(pdMS_TO_TICKS(25));
     return err;
 }
 
@@ -241,7 +241,7 @@ esp_err_t SDPSensor::reset() {
     esp_err_t err = i2c_master_write_to_device(i2c_port, 0x00, cmd,
             1, ticks_to_wait_long);
     ESP_LOGI(TAG_SDPSENSOR, "SDPSensor::reset %s", esp_err_to_name(err));
-    vTaskDelay(pdMS_TO_TICKS(20));
+    vTaskDelay(pdMS_TO_TICKS(25));
     return err;
 }
 
