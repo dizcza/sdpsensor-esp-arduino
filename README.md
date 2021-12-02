@@ -7,7 +7,7 @@ To read the first three bytes (two for diff pressure and one CRC), it takes only
 
 ## Usage
 
-See [sdpsensor-esp-arduino.ino](./examples/sdpsensor-esp-arduino.ino).
+See [examples](./examples).
 
 Serial output:
 
