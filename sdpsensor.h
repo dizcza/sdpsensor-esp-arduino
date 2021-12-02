@@ -16,8 +16,6 @@ class SDPSensor {
         uint8_t i2c_addr;                    /* I2C address */
         i2c_port_t i2c_port;                 /* I2C master port */
         uint16_t pressureScale;              /* Diff pressure scale */
-        uint32_t failsCount;                 /* [watchdog] SDP successive failed reads count */
-        uint32_t maxSuccessiveFailsCount;    /* [watchdog] SDP max successive failed reads before SW reset */
         bool initialized;
     public:
 
@@ -90,29 +88,6 @@ class SDPSensor {
          * @returns the error code (defined in esp_err.h)
          */
         esp_err_t reset();
-
-
-        /**
-         * Set watchdog params to be used in the `watchdogCheck()` function.
-         * Has no effect if the user does not call the `watchdogCheck()` function.
-         *
-         * @param maxSuccessiveFailsCount - the maximum successive failed reads
-         *                                  until the reset command is issued.
-         */
-        void watchdogSetParams(uint32_t maxSuccessiveFailsCount);
-
-
-        /**
-         * Check the error code status of the last read measurement.
-         * If enough errors occurred, a software reset is issued.
-         *
-         * Usage:
-         *   esp_err_t err = sdp.readContinuousRaw(&diff_pressure);
-         *   sdp.watchdogCheck(err);
-         *
-         * @param status - the error code of the last measurement
-         */
-        void watchdogCheck(esp_err_t status);
 
 
         /**

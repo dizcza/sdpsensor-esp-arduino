@@ -56,8 +56,6 @@ SDPSensor::SDPSensor(uint8_t i2c_addr, i2c_port_t i2c_port) {
     this->i2c_addr = i2c_addr;
     this->i2c_port = i2c_port;
     this->pressureScale = 0;  // will be read & set in the begin()
-    this->maxSuccessiveFailsCount = 2;
-    this->failsCount = 0;
     this->initialized = false;
 }
 
@@ -243,38 +241,6 @@ esp_err_t SDPSensor::reset() {
     ESP_LOGI(TAG_SDPSENSOR, "SDPSensor::reset %s", esp_err_to_name(err));
     vTaskDelay(pdMS_TO_TICKS(25));
     return err;
-}
-
-
-void SDPSensor::watchdogSetParams(uint32_t maxSuccessiveFailsCount) {
-    this->maxSuccessiveFailsCount = maxSuccessiveFailsCount;
-}
-
-
-void SDPSensor::watchdogCheck(esp_err_t status) {
-    if (!initialized) return;
-
-    if (status == ESP_OK || status == ESP_ERR_INVALID_CRC) {
-        // invalid CRC does not mean that the sensor is not functioning
-        failsCount = 0;
-    } else {
-        failsCount++;
-    }
-
-    if (failsCount >= maxSuccessiveFailsCount) {
-        ESP_LOGW(TAG_SDPSENSOR, "SDPWatchdog barked. Resetting...");
-        // flush i2c buffers before resetting
-        i2c_reset_tx_fifo(i2c_port);
-        i2c_reset_rx_fifo(i2c_port);
-
-        esp_err_t err = ESP_FAIL;
-        do {
-            err = SDPSensor::reset();
-            if (err == ESP_OK) {
-                err = SDPSensor::startContinuous();
-            }
-        } while (err != ESP_OK);
-    }
 }
 
 
