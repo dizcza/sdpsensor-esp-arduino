@@ -87,7 +87,7 @@ esp_err_t SDPSensor::initI2C(int pinSDA, int pinSCL) {
             i2c_master_rx_buf_disable, i2c_master_tx_buf_disable,
             intr_flag_disable);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_SDPSENSOR, "Could not initialize the I2C: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG_SDPSENSOR, "Failed to initialize the I2C: %s", esp_err_to_name(err));
         return err;
     }
     ESP_LOGI(TAG_SDPSENSOR, "I2C%d line initialized", i2c_port);
@@ -97,9 +97,7 @@ esp_err_t SDPSensor::initI2C(int pinSDA, int pinSCL) {
 
 
 void logInitFailed(esp_err_t err) {
-    ESP_LOGE(TAG_SDPSENSOR,
-            "Could not initialize and setup the SDP sensor: %s",
-            esp_err_to_name(err));
+    ESP_LOGE(TAG_SDPSENSOR, "SDPSensor::begin failed: %s", esp_err_to_name(err));
 }
 
 
@@ -129,7 +127,7 @@ esp_err_t SDPSensor::begin() {
     /*
       Read product id and serial number.
       Data Format:
-       | Byte  | 0 | 1 | 2 | 3 | 4 | 5 | 6...18 |
+       | Byte  | 0 | 1 | 2 | 3 | 4 | 5 | 6...17 |
        | Value |  pid1 |CRC|  pid2 |CRC| serial |
      */
     err = i2c_master_read_from_device(i2c_port, i2c_addr, read_buffer, 18, ticks_to_wait_long);
@@ -140,6 +138,14 @@ esp_err_t SDPSensor::begin() {
 
     const uint32_t pid = (read_buffer[0] << 24) | (read_buffer[1] << 16)
         | (read_buffer[3] << 8) | (read_buffer[4] << 0);
+
+    uint64_t serial_num = 0;
+	uint64_t *pserial = &serial_num;
+    for (int i = 6; i < 18; i++) {
+    	if ((i + 1) % 3 == 0) continue;  // CRC
+        *pserial <<= 8;
+        *pserial |= (uint64_t) read_buffer[i];
+    }
 
     uint32_t model_number, range_pa;
     switch (pid & 0xFFFFFF00) {
@@ -177,7 +183,7 @@ esp_err_t SDPSensor::begin() {
             break;
     }
 
-    ESP_LOGI(TAG_SDPSENSOR, "Initialized SDP%d %dPa sensor (PID=0x%08X)", model_number, range_pa, pid);
+    ESP_LOGI(TAG_SDPSENSOR, "Initialized SDP%d %dPa sensor (PID=0x%08X), serial=0x%016llX", model_number, range_pa, pid, serial_num);
 
     err = i2c_master_write_to_device(i2c_port, i2c_addr, cmd_measure, SDPSENSOR_I2C_CMD_LEN, ticks_to_wait_long);
     if (err != ESP_OK) {
