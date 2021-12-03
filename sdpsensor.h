@@ -17,6 +17,13 @@ class SDPSensor {
         i2c_port_t i2c_port;                 /* I2C master port */
         uint16_t pressureScale;              /* Diff pressure scale */
         bool initialized;
+
+        /* Information parameters */
+        uint32_t modelNumber;
+        uint32_t rangePa;
+        uint32_t productId;
+        uint64_t serialNumber;
+
     public:
 
         /**
@@ -55,6 +62,15 @@ class SDPSensor {
          */
         esp_err_t begin();
 
+        /**
+         * Get sensor info parameters. Arguments can be NULL.
+         *
+         * @param modelNumber  - a pointer to save the model number (3x or 8xx)
+         * @param rangePa      - a pointer to save the measurement range (in Pa)
+         * @param productId    - a pointer to save the product ID (combination of two above)
+         * @param serialNumber - a pointer to save the unique serial number
+         */
+        void getInfo(uint32_t *modelNumber, uint32_t *rangePa, uint32_t *productId, uint64_t *serialNumber);
 
         /**
          * Return the diff pressure scale, saved in the `initSensor()` call.

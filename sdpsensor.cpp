@@ -57,6 +57,10 @@ SDPSensor::SDPSensor(uint8_t i2c_addr, i2c_port_t i2c_port) {
     this->i2c_port = i2c_port;
     this->pressureScale = 0;  // will be read & set in the begin()
     this->initialized = false;
+    this->modelNumber = 0;
+    this->rangePa = 0;
+    this->productId = 0;
+    this->serialNumber = 0;
 }
 
 
@@ -125,65 +129,64 @@ esp_err_t SDPSensor::begin() {
     }
 
     /*
-      Read product id and serial number.
-      Data Format:
+       Read product id and serial number.
+       Data Format:
        | Byte  | 0 | 1 | 2 | 3 | 4 | 5 | 6...17 |
        | Value |  pid1 |CRC|  pid2 |CRC| serial |
-     */
+       */
     err = i2c_master_read_from_device(i2c_port, i2c_addr, read_buffer, 18, ticks_to_wait_long);
     if (err != ESP_OK) {
         logInitFailed(err);
         return err;
     }
 
-    const uint32_t pid = (read_buffer[0] << 24) | (read_buffer[1] << 16)
+    productId = (read_buffer[0] << 24) | (read_buffer[1] << 16)
         | (read_buffer[3] << 8) | (read_buffer[4] << 0);
 
-    uint64_t serial_num = 0;
-	uint64_t *pserial = &serial_num;
+    uint64_t *pserial = &serialNumber;
     for (int i = 6; i < 18; i++) {
-    	if ((i + 1) % 3 == 0) continue;  // CRC
+        if ((i + 1) % 3 == 0) continue;  // CRC
         *pserial <<= 8;
         *pserial |= (uint64_t) read_buffer[i];
     }
 
-    uint32_t model_number, range_pa;
-    switch (pid & 0xFFFFFF00) {
+    modelNumber, rangePa;
+    switch (productId & 0xFFFFFF00) {
         case SPD31_500_PID:
-            model_number = 31;
-            range_pa = 500;
+            modelNumber = 31;
+            rangePa = 500;
             break;
         case SDP32_125_PID:
-            model_number = 32;
-            range_pa = 125;
+            modelNumber = 32;
+            rangePa = 125;
             break;
         case SDP800_500_PID:
-            model_number = 800;
-            range_pa = 500;
+            modelNumber = 800;
+            rangePa = 500;
             break;
         case SDP810_500_PID:
-            model_number = 810;
-            range_pa = 500;
+            modelNumber = 810;
+            rangePa = 500;
             break;
         case SDP801_500_PID:
-            model_number = 801;
-            range_pa = 500;
+            modelNumber = 801;
+            rangePa = 500;
             break;
         case SDP811_500_PID:
-            model_number = 811;
-            range_pa = 500;
+            modelNumber = 811;
+            rangePa = 500;
             break;
         case SDP800_125_PID:
-            model_number = 800;
-            range_pa = 125;
+            modelNumber = 800;
+            rangePa = 125;
             break;
         case SDP810_125_PID:
-            model_number = 810;
-            range_pa = 125;
+            modelNumber = 810;
+            rangePa = 125;
             break;
     }
 
-    ESP_LOGI(TAG_SDPSENSOR, "Initialized SDP%d %dPa sensor (PID=0x%08X), serial=0x%016llX", model_number, range_pa, pid, serial_num);
+    ESP_LOGI(TAG_SDPSENSOR, "Initialized SDP%d %dPa sensor (PID=0x%08X), serial=0x%016llX", modelNumber, rangePa, productId, serialNumber);
 
     err = i2c_master_write_to_device(i2c_port, i2c_addr, cmd_measure, SDPSENSOR_I2C_CMD_LEN, ticks_to_wait_long);
     if (err != ESP_OK) {
@@ -201,11 +204,19 @@ esp_err_t SDPSensor::begin() {
 
     this->pressureScale = ((int16_t) read_buffer[6]) << 8 | read_buffer[7];
 
-    ESP_LOGI(TAG_SDPSENSOR, "SDP%d pressure scale: %d", model_number, this->pressureScale);
+    ESP_LOGI(TAG_SDPSENSOR, "SDP%d pressure scale: %d", modelNumber, this->pressureScale);
 
     this->initialized = true;
 
     return err;
+}
+
+
+void SDPSensor::getInfo(uint32_t *modelNumber, uint32_t *rangePa, uint32_t *productId, uint64_t *serialNumber) {
+    if (modelNumber != NULL) *modelNumber = this->modelNumber;
+    if (rangePa != NULL) *rangePa = this->rangePa;
+    if (productId != NULL) *productId = this->productId;
+    if (serialNumber != NULL) *serialNumber = this->serialNumber;
 }
 
 
@@ -272,10 +283,10 @@ esp_err_t SDPSensor::readDiffPressureTemperature(int16_t *diffPressureRaw, float
     uint8_t data[6] = { 0 };
 
     /*
-      Data Format:
+       Data Format:
        | Byte  |  0  |  1  |  2  |  3  |  4  |  5  |
        | Value | pressure  | CRC |temperature| CRC |
-     */
+       */
     esp_err_t err = i2c_master_read_from_device(i2c_port, i2c_addr, data, 6, I2C_NO_TIMEOUT);
 
     if (err == ESP_OK) {
