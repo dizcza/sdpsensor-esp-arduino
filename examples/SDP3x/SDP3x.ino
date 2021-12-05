@@ -1,13 +1,18 @@
 /**
  * An example to use an SDP3x sensor with an ESP32 board.
  * 
- * Prior setup:
+ * Software setup:
  *   1) install the arduino-esp library
  *   2) select your ESP board in "Tools" -> "Board"
  *   3) select the right port in "Tools" -> "Port"
  *   4) turn on the logs by setting "Tools" -> "Core Debug Level" -> "Info"
+ * Hardware setup:
+ *   1) connect GPIO SDA to pin 19
+ *   2) connect GPIO SCL to pin 23
+ * or change the code appropriately.
  */
 #include "sdpsensor.h"
+#include <Wire.h>
 
 
 /* An SDP sensor instance.
@@ -38,7 +43,8 @@ bool initSensorSingleTrial() {
 void setup() {
   Serial.begin(115200);
   delay(1000); // let serial console settle
-  sdp.initI2C(19, 23);  // same as Wire.begin(SDA, SCL)
+  Wire.begin(19, 23);  // sdp.initI2C() is also possible
+  Wire.setClock(400000);  // (optionally) set I2C frequency to high
 
   // choose how you want to initialize the sensor
   bool success = initSensorSingleTrial();
@@ -60,11 +66,17 @@ void setup() {
 
 
 void loop() {
+  char message[256];
   delay(1000);
   int16_t pressure;
   esp_err_t err = sdp.readDiffPressure(&pressure);
   if (err == ESP_OK) {
     // success; process the 'pressure' here
+    float pressurePa = (float) pressure / sdp.getPressureScale();
+    sprintf(message, "Pressure %d / %d = %.5f Pa", pressure, sdp.getPressureScale(), pressurePa);
+    Serial.println(message);
+  } else {
+    Serial.print("FAILED: ");
+    Serial.println(esp_err_to_name(err));
   }
-  ESP_LOGI("main", "raw pressure: %d, err code: %s", pressure, esp_err_to_name(err));
 }

@@ -8,6 +8,7 @@
 #ifndef SDPSENSOR_H_
 #define SDPSENSOR_H_
 
+#include "esp_err.h"
 #include "driver/i2c.h"
 
 
@@ -105,6 +106,15 @@ class SDPSensor {
          */
         esp_err_t reset();
 
+        /**
+         * Attach the IRQ handler callback to a dedicated GPIO sensor pin.
+         * Only the SDP3x sensor series have an IRQ pin.
+         *
+         * @param irqGPIO     - GPIO interrupt pin number
+         * @param irqHandler  - interrupt handler callback function
+         * @returns the error code (defined in esp_err.h)
+         */
+        esp_err_t attachIRQHandler(int irqGPIO, void (*irqHandler)() );
 
         /**
          * Read the raw (unnormalized) differential pressure value and

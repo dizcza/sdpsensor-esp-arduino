@@ -3,12 +3,18 @@
  *   with a watchdog that barks each time three errors are
  *   encountered in a row.
  * 
- * Prior setup:
+ * Software setup:
  *   1) install the arduino-esp library
  *   2) select your ESP board in "Tools" -> "Board"
  *   3) select the right port in "Tools" -> "Port"
  *   4) turn on the logs by setting "Tools" -> "Core Debug Level" -> "Info"
+ * Hardware setup:
+ *   1) connect GPIO SDA to pin 19
+ *   2) connect GPIO SCL to pin 23
+ * or change the code appropriately.
  */
+
+#include <Wire.h>
 #include "sdpsensor.h"
 
 
@@ -23,7 +29,7 @@ SDPSensor sdp(0x21);
 uint32_t failsCount = 0;
 
 /* Max SDP successive failed reads before a SW reset */
-const uint32_t maxSuccessiveFailsCount = 3;
+const uint32_t maxSuccessiveFailsCount = 1;
 
 /**
  * Check the error code status of the last read measurement.
@@ -35,7 +41,7 @@ const uint32_t maxSuccessiveFailsCount = 3;
  *
  * @param status - the error code of the last measurement
  */
-void watchdogCheck(esp_err_t status) {
+bool watchdogCheck(esp_err_t status) {
     if (status == ESP_OK) {
         failsCount = 0;
     } else {
@@ -43,7 +49,7 @@ void watchdogCheck(esp_err_t status) {
     }
 
     if (failsCount >= maxSuccessiveFailsCount) {
-        ESP_LOGW("watchdog", "SDPWatchdog barked. Resetting...");
+        Serial.println("SDPWatchdog barked. Resetting...");
         esp_err_t err = ESP_FAIL;
         do {
             err = sdp.reset();  // sdp.stopContinuous() is a safer version
@@ -51,15 +57,17 @@ void watchdogCheck(esp_err_t status) {
                 err = sdp.startContinuous();
             }
         } while (err != ESP_OK);
+        return true;
     }
 
+    return false;
 }
 
 
 void setup() {
   Serial.begin(115200);
   delay(1000); // let serial console settle
-  sdp.initI2C(19, 23);  // same as Wire.begin(SDA, SCL)
+  Wire.begin(19, 23);
 
   // try until succeeds
   while (sdp.stopContinuous() != ESP_OK);  // sdp.reset() is also possible
@@ -69,14 +77,14 @@ void setup() {
 
 
 void loop() {
-  delay(1000);
   int16_t pressure;
-  esp_err_t err = sdp.readDiffPressure(&pressure);
-  ESP_LOGI("sdp", "raw pressure: %d, err code: %s", pressure, esp_err_to_name(err));
+  esp_err_t err;
 
-  /*
-   *  Optionally, check the last result code.
-   *  If enough errors occur, a software reset is issued.
-   */
-  watchdogCheck(err);
+  do {
+    // read the sensor without delay until the watchdog starts barking ...
+    err = sdp.readDiffPressure(&pressure);
+  } while (!watchdogCheck(err));
+
+  // wait & repeat
+  delay(3000);
 }

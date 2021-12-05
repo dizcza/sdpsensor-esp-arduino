@@ -261,6 +261,33 @@ esp_err_t SDPSensor::reset() {
 }
 
 
+esp_err_t SDPSensor::attachIRQHandler(int irqGPIO, void (*irqHandler)() ) {
+    gpio_config_t irq_io_conf = {
+    		.pin_bit_mask = 1ULL << irqGPIO,            // IRQ pin
+			.mode = GPIO_MODE_INPUT,                    // input mode
+			.pull_up_en = GPIO_PULLUP_ENABLE,           // enable pull-up
+			.pull_down_en = GPIO_PULLDOWN_DISABLE,      // disable pull-down
+			.intr_type = GPIO_INTR_NEGEDGE              // falling edge interrupt
+    };
+    esp_err_t err;
+    err = gpio_config(&irq_io_conf);
+    if (err != ESP_OK) {
+        return err;
+    }
+    // install the GPIO ISR service
+    err = gpio_install_isr_service(0);
+    if (err != ESP_OK) {
+        return err;
+    }
+    // hook an ISR handler for the specific GPIO pin
+    err = gpio_isr_handler_add((gpio_num_t) irqGPIO, (gpio_isr_t) irqHandler, NULL);
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG_SDPSENSOR, "Attached an IRQ handler to GPIO pin %d", irqGPIO);
+    }
+    return err;
+}
+
+
 esp_err_t SDPSensor::readDiffPressure(int16_t *diffPressureRaw) {
     if (!initialized) return ESP_ERR_INVALID_STATE;
 
