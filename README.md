@@ -4,7 +4,8 @@ ESP-IDF & Arduino friendly implementation of communication with Sensirion differ
 
 Compared to a general-purpose arduino library [SDP3x-Arduino](https://github.com/DataDrake/SDP3x-Arduino), it's:
 
-1. a bit faster (158 vs 170 us) because of the optimized `i2c_master_read_from_device` and `i2c_master_write_from_device` functions. Benchmarks are measured for the 400kHz I2C clock frequency (`Wire.setClock()`).
+1. a bit faster (158 vs 170 us). Benchmarks are measured for the 400kHz I2C clock frequency (`Wire.setClock()`).
+2. not thread-safe. For thread-safe operations, use Arduino's Wire lib.
 2. it has support for interrupt handlers (available for SDP3x sensors only). With interrupts, you can achieve reliable sensor updates at ~2100 Hz frequency. See the [SDP3x\_Interrupts](./examples/SDP3x_Interrupts/SDP3x_Interrupts.ino) demo.
 2. ESP-IDF friendly: run this code either in Arduino or in your favourite ESP-IDF framework. For pure C implementation, refer to [`sdpsensor.c`](https://github.com/dizcza/esp32-sdpsensor/blob/master/main/sdpsensor.c).
 3. DataDrake's implementation has a bug in the reset function. It's fixed here.

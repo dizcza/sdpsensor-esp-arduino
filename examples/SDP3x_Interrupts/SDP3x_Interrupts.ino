@@ -66,6 +66,7 @@ void setup() {
   Serial.begin(115200);
   delay(1000); // let serial console settle
   Wire.begin(19, 23);
+  Wire.setClock(400000); // allow high speed
 
   // you should be already familiar with this
   while (sdp.stopContinuous() != ESP_OK);
